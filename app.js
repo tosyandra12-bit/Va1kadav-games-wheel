@@ -1,7 +1,14 @@
 // ═══════════════════════════════════════════════════════════
 //  ⚙️ НАСТРОЙКИ — МЕНЯЕШЬ ЗДЕСЬ
 // ═══════════════════════════════════════════════════════════
+headers: {
+  'Content-Type': 'application/json',
+  'bypass-tunnel-reminder': 'true',
+  'User-Agent': 'Va1kadavBot/1.0'
+}
+
 const API_URL = "https://ТВОЙ-ТУННЕЛЬ.trycloudflare.com"; // ← адрес backend
+
 
 const tg = window.Telegram.WebApp;
 tg.ready();
