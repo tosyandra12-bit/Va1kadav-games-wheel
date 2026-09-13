@@ -1,14 +1,14 @@
 // ═══════════════════════════════════════════════════════════
 //  ⚙️ НАСТРОЙКИ — МЕНЯЕШЬ ЗДЕСЬ
 // ═══════════════════════════════════════════════════════════
-headers: {
+const API_URL = "https://va1kadav-roulette-backend.loca.lt";
+
+// Заголовки для всех запросов (обход заглушки LocalTunnel)
+const REQUEST_HEADERS = {
   'Content-Type': 'application/json',
   'bypass-tunnel-reminder': 'true',
   'User-Agent': 'Va1kadavBot/1.0'
-}
-
-const API_URL = "https://va1kadav-roulette-backend.loca.lt"; // ← адрес backend
-
+};
 
 const tg = window.Telegram.WebApp;
 tg.ready();
@@ -57,13 +57,11 @@ function drawWheel() {
     ctx.restore();
   }
 
-  // центр
   ctx.beginPath();
   ctx.arc(cx, cy, 30, 0, Math.PI * 2);
   ctx.fillStyle = '#222'; ctx.fill();
   ctx.strokeStyle = '#888'; ctx.lineWidth = 2; ctx.stroke();
 
-  // указатель
   ctx.beginPath();
   ctx.moveTo(cx, 6);
   ctx.lineTo(cx - 10, 26);
@@ -137,14 +135,10 @@ async function spin() {
   let res;
   try {
     res = await fetch(`${API_URL}/api/roulette/spin`, {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'bypass-tunnel-reminder': 'true',
-    'User-Agent': 'Va1kadavBot/1.0'
-  },
-  body: JSON.stringify(payload),
-}).then(r => r.json());
+      method: 'POST',
+      headers: REQUEST_HEADERS,
+      body: JSON.stringify(payload),
+    }).then(r => r.json());
   } catch (err) {
     document.getElementById('result').textContent = "❌ Сеть недоступна";
     isSpinning = false;
@@ -188,7 +182,6 @@ async function spin() {
       tg.HapticFeedback?.notificationOccurred('error');
     }
 
-    // сброс колеса
     setTimeout(() => {
       canvas.style.transition = 'none';
       canvas.style.transform = `rotate(${targetAngle % 360}deg)`;
@@ -200,7 +193,7 @@ async function spin() {
   }, 4000);
 }
 
-// ─── Рендер ───────────────────────────────────────────────
+// ─── Рендер баланса ───────────────────────────────────────
 function renderBalance() {
   document.getElementById('balance-vrt').textContent = userData.balance_vrt;
   document.getElementById('balance-stars').textContent = userData.balance_stars;
@@ -224,14 +217,10 @@ async function init() {
 
   try {
     const res = await fetch(`${API_URL}/api/roulette/me`, {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'bypass-tunnel-reminder': 'true',
-    'User-Agent': 'Va1kadavBot/1.0'
-  },
-  body: JSON.stringify({init_data: tg.initData})
-}).then(r => r.json());
+      method: 'POST',
+      headers: REQUEST_HEADERS,
+      body: JSON.stringify({init_data: tg.initData})
+    }).then(r => r.json());
 
     if (!res.ok) {
       document.getElementById('loading').textContent = "❌ Авторизация не удалась";
