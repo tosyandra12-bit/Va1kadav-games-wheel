@@ -7,7 +7,7 @@ headers: {
   'User-Agent': 'Va1kadavBot/1.0'
 }
 
-const API_URL = "https://ТВОЙ-ТУННЕЛЬ.trycloudflare.com"; // ← адрес backend
+const API_URL = "https://va1kadav-roulette-backend.loca.lt"; // ← адрес backend
 
 
 const tg = window.Telegram.WebApp;
