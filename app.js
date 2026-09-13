@@ -137,10 +137,14 @@ async function spin() {
   let res;
   try {
     res = await fetch(`${API_URL}/api/roulette/spin`, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(payload),
-    }).then(r => r.json());
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'bypass-tunnel-reminder': 'true',
+    'User-Agent': 'Va1kadavBot/1.0'
+  },
+  body: JSON.stringify(payload),
+}).then(r => r.json());
   } catch (err) {
     document.getElementById('result').textContent = "❌ Сеть недоступна";
     isSpinning = false;
@@ -220,10 +224,14 @@ async function init() {
 
   try {
     const res = await fetch(`${API_URL}/api/roulette/me`, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({init_data: tg.initData})
-    }).then(r => r.json());
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'bypass-tunnel-reminder': 'true',
+    'User-Agent': 'Va1kadavBot/1.0'
+  },
+  body: JSON.stringify({init_data: tg.initData})
+}).then(r => r.json());
 
     if (!res.ok) {
       document.getElementById('loading').textContent = "❌ Авторизация не удалась";
