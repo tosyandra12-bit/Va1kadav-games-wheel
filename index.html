@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>🎰 Рулетка Va1kadav</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+  <div id="app">
+    <header>
+      <div class="balance">
+        💰 <span id="balance-vrt">...</span> VRT
+        <span class="sep">·</span>
+        ⭐ <span id="balance-stars">...</span>★
+      </div>
+      <button id="close-btn">✖</button>
+    </header>
+
+    <div id="loading">Загрузка...</div>
+
+    <div id="game" style="display:none;">
+      <canvas id="wheel" width="320" height="320"></canvas>
+      <div id="result"></div>
+
+      <div class="mode-switch">
+        <button class="mode-btn active" data-mode="vrt">💎 VRT</button>
+        <button class="mode-btn" data-mode="stars">⭐ Звёзды</button>
+      </div>
+
+      <div class="bet-section">
+        <label>Ставка: <input id="bet" type="number" value="50" min="10"></label>
+        <div class="quick-bets">
+          <button data-add="10">+10</button>
+          <button data-add="50">+50</button>
+          <button data-add="100">+100</button>
+          <button data-add="500">+500</button>
+        </div>
+      </div>
+
+      <div class="table">
+        <button class="zero" data-bet="straight:0">0</button>
+        <div class="numbers" id="numbers"></div>
+      </div>
+
+      <div class="outside-bets">
+        <button data-bet="red">🔴 Красное x2</button>
+        <button data-bet="black">⚫ Чёрное x2</button>
+        <button data-bet="even">Чётное x2</button>
+        <button data-bet="odd">Нечётное x2</button>
+        <button data-bet="low">1-18 x2</button>
+        <button data-bet="high">19-36 x2</button>
+        <button data-bet="dozen1">1-12 x3</button>
+        <button data-bet="dozen2">13-24 x3</button>
+        <button data-bet="dozen3">25-36 x3</button>
+      </div>
+
+      <button id="spin-btn" disabled>🎰 КРУТИТЬ</button>
+    </div>
+  </div>
+
+<script src="app.js"></script>
+</body>
+</html>
