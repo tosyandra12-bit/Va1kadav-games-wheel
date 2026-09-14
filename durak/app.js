@@ -40,14 +40,6 @@ function showScreen(name) {
   });
 }
 
-function showLoading(text) {
-  const el = $('loading');
-  if (el) {
-    el.textContent = text;
-    el.style.display = 'block';
-  }
-}
-
 function hideLoading() {
   const el = $('loading');
   if (el) el.style.display = 'none';
@@ -65,10 +57,9 @@ function showStatus(text) {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  ПРИВЯЗКА СОБЫТИЙ — вызывается ДО init()
+//  ПРИВЯЗКА СОБЫТИЙ
 // ═══════════════════════════════════════════════════════════
 function bindEvents() {
-  // ─── КНОПКИ МЕНЮ ────────────────────────────────
   const startBot = $('start-bot');
   if (startBot) startBot.onclick = startBotGame;
 
@@ -84,12 +75,10 @@ function bindEvents() {
   const closeBtn = $('close-btn');
   if (closeBtn) closeBtn.onclick = () => { if (tg) tg.close(); };
 
-  // ─── РЕЖИМЫ ─────────────────────────────────────
   document.querySelectorAll('.mode-btn').forEach(b => {
     b.onclick = () => setMode(b.dataset.mode);
   });
 
-  // ─── КНОПКИ ИГРЫ ────────────────────────────────
   const btnPass = $('btn-pass');
   if (btnPass) btnPass.onclick = () => action('pass');
 
@@ -99,7 +88,6 @@ function bindEvents() {
   const btnExit = $('btn-exit');
   if (btnExit) btnExit.onclick = exitGame;
 
-  // ─── ЛОББИ ──────────────────────────────────────
   const startMp = $('start-mp');
   if (startMp) startMp.onclick = () => {
     if (gameState?.lobby) startMultiplayerGame(gameState.lobby.code);
@@ -128,28 +116,21 @@ function copyLobbyCode() {
 async function init() {
   console.log('[INIT] Начинаем');
 
-  // 1. Telegram SDK
   if (window.Telegram && window.Telegram.WebApp) {
     tg = window.Telegram.WebApp;
     try {
       tg.ready();
       tg.expand();
-      console.log('[INIT] Telegram WebApp готов, initData длина:', tg.initData.length);
+      console.log('[INIT] Telegram готов, initData длина:', tg.initData.length);
     } catch (e) {
-      console.warn('[INIT] Ошибка Telegram SDK:', e);
+      console.warn('[INIT] Telegram SDK error:', e);
     }
-  } else {
-    console.warn('[INIT] Telegram WebApp не найден (открыто в браузере)');
   }
 
-  // 2. Показываем меню сразу (без ожидания баланса)
   hideLoading();
   showScreen('menu');
-
-  // 3. Загружаем баланс (может не сработать в браузере — это норма)
   await loadUser();
 
-  // 4. Пробуем показать MainButton Telegram
   if (tg && tg.MainButton) {
     try {
       tg.MainButton.setText("🃏 Играть с ботами");
@@ -175,16 +156,16 @@ async function loadUser() {
     }).then(r => r.json());
 
     if (!res.ok) {
-      console.warn('[LOAD] Авторизация не удалась:', res);
+      console.warn('[LOAD] Auth failed:', res);
       $('bal-vrt').textContent = "ошибка";
       $('bal-stars').textContent = "ошибка";
       return;
     }
     userData = res.user;
     renderBalance();
-    console.log('[LOAD] Юзер загружен:', userData);
+    console.log('[LOAD] User загружен');
   } catch (err) {
-    console.warn('[LOAD] Ошибка сети:', err);
+    console.warn('[LOAD] Network error:', err);
     $('bal-vrt').textContent = "?";
     $('bal-stars').textContent = "?";
   }
@@ -203,23 +184,15 @@ function setMode(mode) {
   document.querySelectorAll('.mode-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.mode === mode);
   });
-  const unit = mode === 'vrt' ? 'VRT' : '★';
-  const botBet = $('bot-bet');
-  const mpBet = $('mp-bet');
-  if (botBet) botBet.placeholder = `50 ${unit}`;
-  if (mpBet) mpBet.placeholder = `50 ${unit}`;
 }
 
 // ═══════════════════════════════════════════════════════════
 //  ИГРА С БОТАМИ
 // ═══════════════════════════════════════════════════════════
 async function startBotGame() {
-  console.log('[GAME] startBotGame вызван');
+  console.log('[GAME] startBotGame');
 
-  if (!userData) {
-    showStatus("⏳ Загрузка данных...");
-    return;
-  }
+  if (!userData) return showStatus("⏳ Загрузка данных...");
 
   const players = parseInt($('bot-players').value);
   const bet = parseInt($('bot-bet').value);
@@ -254,7 +227,7 @@ async function startBotGame() {
     renderGame();
     showStatus("");
   } catch (err) {
-    console.error('[GAME] Ошибка:', err);
+    console.error('[GAME]', err);
     showStatus("❌ Сеть недоступна");
   }
 }
@@ -263,7 +236,6 @@ async function startBotGame() {
 //  МУЛЬТИПЛЕЕР
 // ═══════════════════════════════════════════════════════════
 async function createRoomHandler() {
-  console.log('[MP] createRoom');
   if (!userData) return showStatus("⏳ Загрузка...");
 
   const maxPlayers = parseInt($('mp-players').value);
@@ -289,7 +261,7 @@ async function createRoomHandler() {
     renderLobby();
     startPolling();
   } catch (err) {
-    console.error('[MP] Ошибка:', err);
+    console.error('[MP]', err);
     showStatus("❌ Сеть недоступна");
   }
 }
@@ -314,7 +286,7 @@ async function joinRoomHandler() {
     renderLobby();
     startPolling();
   } catch (err) {
-    console.error('[MP] Ошибка:', err);
+    console.error('[MP]', err);
     showStatus("❌ Сеть недоступна");
   }
 }
@@ -365,7 +337,7 @@ async function startMultiplayerGame(code) {
     showScreen('game');
     renderGame();
   } catch (err) {
-    console.error('[MP] Ошибка:', err);
+    console.error('[MP]', err);
     showStatus("❌ Сеть недоступна");
   }
 }
@@ -399,7 +371,7 @@ function renderGame() {
     });
   }
 
-  // Стол
+  // Стол (пары атака/защита)
   const tableEl = $('table');
   if (tableEl) {
     tableEl.innerHTML = '';
@@ -419,7 +391,7 @@ function renderGame() {
     (g.my_hand || []).forEach((card, idx) => {
       const el = createCardEl(card, true, false);
       el.dataset.index = idx;
-      el.onclick = () => selectCard(idx, el);
+      el.onclick = () => onCardClick(idx, el);
       if (selectedCard === idx) el.classList.add('selected');
       myHand.appendChild(el);
     });
@@ -427,10 +399,13 @@ function renderGame() {
 
   // Статус
   let statusText = '';
-  if (g.current_turn === g.my_id) {
-    statusText = g.phase === 'attack'
-      ? "👉 Ваш ход: выберите карту"
-      : "🛡 Отбивайтесь или возьмите";
+  const isMyTurn = g.current_turn === g.my_id;
+  if (isMyTurn) {
+    if (g.phase === 'attack') {
+      statusText = "👉 Ваш ход: клик на карту = атака";
+    } else {
+      statusText = "🛡 Отбивайтесь: клик на карту, или «Взять»";
+    }
   } else {
     const oppName = g.players?.[g.current_turn]?.name || 'игрок';
     statusText = `⏳ Ходит ${oppName}...`;
@@ -440,7 +415,6 @@ function renderGame() {
   if (statusEl) statusEl.textContent = statusText;
 
   // Кнопки
-  const isMyTurn = g.current_turn === g.my_id;
   const btnPass = $('btn-pass');
   const btnTake = $('btn-take');
   if (btnPass) {
@@ -467,12 +441,24 @@ function createCardEl(card, clickable, small) {
   return el;
 }
 
-function selectCard(idx, el) {
+// ═══════════════════════════════════════════════════════════
+//  🔥 ФИКС: клик на карту = сразу ход
+// ═══════════════════════════════════════════════════════════
+function onCardClick(idx, el) {
+  console.log('[CLICK] Карта', idx);
+
   if (!gameState) return;
-  if (gameState.current_turn !== gameState.my_id) return;
-  selectedCard = selectedCard === idx ? null : idx;
+  if (gameState.current_turn !== gameState.my_id) {
+    return showStatus("⏳ Не ваш ход");
+  }
+
+  // выделяем карту
+  selectedCard = idx;
   document.querySelectorAll('#my-hand .card').forEach(c => c.classList.remove('selected'));
-  if (selectedCard !== null) el.classList.add('selected');
+  el.classList.add('selected');
+
+  // ⚡ сразу отправляем ход
+  action('play');
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -481,11 +467,14 @@ function selectCard(idx, el) {
 async function action(type) {
   if (!gameState || !gameState.id) return;
   if (gameState.current_turn !== gameState.my_id) {
-    return showStatus("❌ Не ваш ход");
+    return showStatus("⏳ Не ваш ход");
   }
+
   if (type === 'play' && selectedCard === null) {
     return showStatus("❌ Выберите карту");
   }
+
+  console.log('[ACTION]', type, 'card_index=', selectedCard);
 
   try {
     const res = await fetch(`${API_URL}/api/durak/action`, {
@@ -499,7 +488,16 @@ async function action(type) {
       })
     }).then(r => r.json());
 
-    if (!res.ok) return showStatus("❌ " + (res.error || "Ошибка"));
+    if (!res.ok) {
+      // ошибка — показываем и НЕ сбрасываем selectedCard
+      showStatus("❌ " + (res.error || "Ошибка"));
+      // снимаем выделение с карты
+      document.querySelectorAll('#my-hand .card').forEach(c => c.classList.remove('selected'));
+      selectedCard = null;
+      return;
+    }
+
+    // успех
     selectedCard = null;
     gameState = res.game;
     renderGame();
@@ -563,7 +561,7 @@ async function pollUpdate() {
       }
     }
   } catch (err) {
-    // тихо игнорируем
+    // тихо
   }
 }
 
@@ -630,10 +628,7 @@ document.addEventListener('DOMContentLoaded', () => {
   init();
 });
 
-// Если DOM уже загружен (скрипт в конце body)
-if (document.readyState === 'loading') {
-  // ждём DOMContentLoaded
-} else {
+if (document.readyState !== 'loading') {
   bindEvents();
   init();
 }
