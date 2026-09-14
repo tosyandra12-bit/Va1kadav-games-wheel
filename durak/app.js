@@ -96,6 +96,58 @@ function highlightOpponent(oppId, on) {
 }
 
 // ═══════════════════════════════════════════════════════════
+//  СРАВНЕНИЕ СОСТОЯНИЙ — против мерцания
+// ═══════════════════════════════════════════════════════════
+function stateChanged(oldState, newState) {
+  if (!oldState || !newState) return true;
+
+  if (oldState.phase !== newState.phase) return true;
+  if (oldState.current_turn !== newState.current_turn) return true;
+  if (oldState.current_attacker !== newState.current_attacker) return true;
+  if (oldState.current_defender !== newState.current_defender) return true;
+  if (oldState.deck_count !== newState.deck_count) return true;
+  if (oldState.finished !== newState.finished) return true;
+
+  // Стол
+  const oldTable = oldState.table || [];
+  const newTable = newState.table || [];
+  if (oldTable.length !== newTable.length) return true;
+  for (let i = 0; i < oldTable.length; i++) {
+    const oa = oldTable[i].attack;
+    const na = newTable[i].attack;
+    if (!oa || !na) return true;
+    if (oa.rank !== na.rank || oa.suit !== na.suit) return true;
+
+    const od = oldTable[i].defend;
+    const nd = newTable[i].defend;
+    if ((od && !nd) || (!od && nd)) return true;
+    if (od && nd && (od.rank !== nd.rank || od.suit !== nd.suit)) return true;
+  }
+
+  // Моя рука
+  const oldHand = oldState.my_hand || [];
+  const newHand = newState.my_hand || [];
+  if (oldHand.length !== newHand.length) return true;
+
+  // Противники
+  const oldOpp = oldState.opponents || [];
+  const newOpp = newState.opponents || [];
+  if (oldOpp.length !== newOpp.length) return true;
+  for (let i = 0; i < oldOpp.length; i++) {
+    if (oldOpp[i].card_count !== newOpp[i].card_count) return true;
+  }
+
+  // last_action
+  const ol = oldState.last_action;
+  const nl = newState.last_action;
+  if (!ol && nl) return true;
+  if (ol && !nl) return true;
+  if (ol && nl && ol.type !== nl.type) return true;
+
+  return false;
+}
+
+// ═══════════════════════════════════════════════════════════
 //  ПРИВЯЗКА СОБЫТИЙ
 // ═══════════════════════════════════════════════════════════
 function bindEvents() {
@@ -160,7 +212,7 @@ async function init() {
     try {
       tg.ready();
       tg.expand();
-      console.log('[INIT] Telegram готов, initData длина:', tg.initData.length);
+      console.log('[INIT] Telegram готов');
     } catch (e) {}
   }
 
@@ -254,7 +306,6 @@ async function startBotGame() {
     renderGame();
     showStatus("");
 
-    // ⚡ запускаем ходы ботов, если очередь бота
     if (res.next_is_bot) {
       setTimeout(() => runBotTurns(), 900);
     } else {
@@ -312,7 +363,6 @@ async function joinRoomHandler() {
 
     if (!res.ok) return showToast("❌ " + (res.error || "Ошибка"), 'error');
 
-    // ⚡ если игра уже началась — сразу в бой
     if (res.game) {
       gameState = res.game;
       stopPolling();
@@ -572,9 +622,9 @@ async function action(type) {
       return;
     }
 
-    // Показ эффекта
     const g = res.game;
     const la = g.last_action || {};
+
     if (la.type === 'beat') {
       showToast(`✅ Отбито ${cardToStr(la.attacked)} → ${cardToStr(la.card)}`, 'success');
       vibrate('success');
@@ -590,6 +640,9 @@ async function action(type) {
     } else if (la.type === 'pass') {
       showToast(`🏁 Пас`, 'info');
       vibrate('light');
+    } else if (la.type === 'defend_done') {
+      showToast(`✅ Отбито — можете подкинуть или «Пас»`, 'info');
+      vibrate('light');
     } else if (la.type === 'end_round') {
       showToast(`🎯 Раунд окончен`, 'success');
       vibrate('success');
@@ -599,7 +652,6 @@ async function action(type) {
     gameState = g;
     renderGame();
 
-    // ⚡ запускаем ходы ботов
     if (res.next_is_bot) {
       setTimeout(() => runBotTurns(), 900);
     } else {
@@ -630,13 +682,10 @@ async function runBotTurns() {
 
       if (!isBotTurn) break;
 
-      // ⚡ подсветка активного бота
       highlightOpponent(current, true);
 
-      // ⚡ пауза — «бот думает»
       await new Promise(r => setTimeout(r, 700));
 
-      // ⚡ запрос одного хода
       const res = await fetch(`${API_URL}/api/durak/bot_turn`, {
         method: 'POST',
         headers: REQUEST_HEADERS,
@@ -655,7 +704,6 @@ async function runBotTurns() {
       renderGame();
       highlightOpponent(current, false);
 
-      // ⚡ toast
       const la = gameState.last_action;
       if (la) {
         if (la.type === 'beat') {
@@ -668,15 +716,15 @@ async function runBotTurns() {
           showToast(`➕ Подкинул ${cardToStr(la.card)}`, 'info');
         } else if (la.type === 'pass') {
           showToast(`🏁 Пас`, 'info');
+        } else if (la.type === 'defend_done') {
+          showToast(`✅ Отбито`, 'info');
         } else if (la.type === 'end_round') {
           showToast(`🎯 Раунд окончен`, 'success');
         }
       }
 
-      // ⚡ пауза — чтобы увидеть карту
       await new Promise(r => setTimeout(r, 800));
 
-      // ⚡ ход вернулся к тебе?
       if (gameState.current_turn === gameState.my_id) {
         showToast("🎯 Твой ход!", 'success');
         vibrate('success');
@@ -690,7 +738,6 @@ async function runBotTurns() {
   } finally {
     isSending = false;
 
-    // ⚡ если игра не закончилась и ход не бота — включаем polling
     if (gameState && !gameState.finished) {
       const cur = gameState.current_turn;
       const isBotTurn = gameState.opponents?.some(o => o.id === cur);
@@ -734,7 +781,6 @@ async function pollUpdate() {
       if (res.ok) {
         gameState.lobby = res.lobby;
 
-        // ⚡ игра стартовала — переключаемся
         if (res.game) {
           gameState = res.game;
           stopPolling();
@@ -750,33 +796,42 @@ async function pollUpdate() {
           renderLobby();
         }
       }
-    } else if (gameState.id) {
-      // ⚡ если ход бота — запускаем ходы
-      const cur = gameState.current_turn;
-      const isBotTurn = gameState.opponents?.some(o => o.id === cur);
-      if (isBotTurn) {
-        runBotTurns();
-        return;
+      return;
+    }
+
+    if (!gameState.id) return;
+
+    // ⚡ если ход бота — запускаем ходы
+    const cur = gameState.current_turn;
+    const isBotTurn = gameState.opponents?.some(o => o.id === cur);
+    if (isBotTurn) {
+      runBotTurns();
+      return;
+    }
+
+    // ⚡ получаем новое состояние
+    const res = await fetch(`${API_URL}/api/durak/state`, {
+      method: 'POST',
+      headers: REQUEST_HEADERS,
+      body: JSON.stringify({
+        init_data: tg ? tg.initData : "",
+        game_id: gameState.id
+      })
+    }).then(r => r.json());
+
+    if (!res.ok || !res.game) return;
+
+    // ⚡ СРАВНИВАЕМ: изменилось ли что-то?
+    if (stateChanged(gameState, res.game)) {
+      gameState = res.game;
+      renderGame();
+
+      if (res.next_is_bot) {
+        setTimeout(() => runBotTurns(), 900);
       }
-
-      // иначе просто обновляем состояние
-      const res = await fetch(`${API_URL}/api/durak/state`, {
-        method: 'POST',
-        headers: REQUEST_HEADERS,
-        body: JSON.stringify({
-          init_data: tg ? tg.initData : "",
-          game_id: gameState.id
-        })
-      }).then(r => r.json());
-
-      if (res.ok && res.game) {
-        gameState = res.game;
-        renderGame();
-
-        if (res.next_is_bot) {
-          setTimeout(() => runBotTurns(), 900);
-        }
-      }
+    } else {
+      // ничего не изменилось — НЕ перерисовываем
+      gameState.last_action = res.game.last_action;
     }
   } catch (err) {}
 }
@@ -828,6 +883,7 @@ function showRules() {
     "• Козырь бьёт любую карту другой масти\n" +
     "• Старшая бьёт младшую (Т>К>Д>В>10>9>8>7>6)\n" +
     "• Атакующий кладёт карту, защитник отбивает\n" +
+    "• После отбоя атакующий может подкинуть карту того же ранга\n" +
     "• Не отбился — забирает все карты со стола\n" +
     "• Первый без карт — победитель\n" +
     "• Последний — ДУРАК"
