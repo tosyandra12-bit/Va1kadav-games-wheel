@@ -217,7 +217,7 @@ h1 {
   padding: 10px;
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 10px;
   justify-content: center;
   align-items: center;
   margin: 12px 0;
@@ -227,6 +227,10 @@ h1 {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  background: rgba(0,0,0,0.2);
+  padding: 4px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.05);
 }
 
 #my-hand {
@@ -415,12 +419,13 @@ h1 {
   padding: 14px 28px;
   border-radius: 30px;
   font-weight: bold;
-  font-size: 16px;
+  font-size: 15px;
   z-index: 9999;
-  animation: toastAppear 1.4s ease-out forwards;
+  animation: toastAppear 1.5s ease-out forwards;
   box-shadow: 0 8px 32px rgba(0,0,0,0.6);
   pointer-events: none;
-  white-space: nowrap;
+  max-width: 90vw;
+  text-align: center;
 }
 
 .toast-success {
