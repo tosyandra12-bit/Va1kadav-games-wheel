@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>🃏 Дурак</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+  <div id="app">
+    <!-- Шапка -->
+    <header>
+      <div class="balance">
+        💰 <span id="bal-vrt">...</span> VRT
+        <span class="sep">·</span>
+        ⭐ <span id="bal-stars">...</span>★
+      </div>
+      <button id="close-btn">✖</button>
+    </header>
+
+    <!-- Загрузка -->
+    <div id="loading">Загрузка...</div>
+
+    <!-- Главное меню игры -->
+    <div id="menu" style="display:none;">
+      <h1>🃏 ДУРАК</h1>
+
+      <div class="mode-switch">
+        <button class="mode-btn active" data-mode="vrt">💎 VRT</button>
+        <button class="mode-btn" data-mode="stars">⭐ Звёзды</button>
+      </div>
+
+      <div class="section">
+        <h2>👤 Игра против бота</h2>
+        <div class="row">
+          <label>Игроков:</label>
+          <select id="bot-players">
+            <option value="2">2 (я + 1 бот)</option>
+            <option value="3">3 (я + 2 бота)</option>
+            <option value="4" selected>4 (я + 3 бота)</option>
+            <option value="5">5 (я + 4 бота)</option>
+            <option value="6">6 (я + 5 ботов)</option>
+          </select>
+        </div>
+        <div class="row">
+          <label>Ставка:</label>
+          <input id="bot-bet" type="number" value="50" min="10">
+        </div>
+        <button id="start-bot" class="primary-btn">🎮 Играть с ботами</button>
+      </div>
+
+      <div class="section">
+        <h2>👥 Мультиплеер</h2>
+        <div class="row">
+          <label>Макс игроков:</label>
+          <select id="mp-players">
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4" selected>4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+          </select>
+        </div>
+        <div class="row">
+          <label>Ставка:</label>
+          <input id="mp-bet" type="number" value="50" min="10">
+        </div>
+        <button id="create-room" class="primary-btn">📝 Создать лобби</button>
+        <div class="row">
+          <input id="join-code" placeholder="Код лобби" maxlength="6">
+          <button id="join-room" class="secondary-btn">🔗 Войти</button>
+        </div>
+      </div>
+
+      <button id="open-rules" class="link-btn">❓ Правила</button>
+    </div>
+
+    <!-- Игра -->
+    <div id="game" style="display:none;">
+      <div id="trump-bar">
+        🎴 Козырь: <span id="trump-suit"></span>
+        · Колода: <span id="deck-count">0</span>
+      </div>
+
+      <!-- Другие игроки -->
+      <div id="opponents"></div>
+
+      <!-- Стол -->
+      <div id="table"></div>
+
+      <!-- Мои карты -->
+      <div id="my-hand"></div>
+
+      <!-- Кнопки -->
+      <div id="actions">
+        <button id="btn-pass" class="secondary-btn">🏁 Пас</button>
+        <button id="btn-take" class="secondary-btn">🙈 Взять</button>
+        <button id="btn-exit" class="link-btn">🚪 Выйти</button>
+      </div>
+
+      <div id="status"></div>
+    </div>
+
+    <!-- Лобби (мультиплеер) -->
+    <div id="lobby" style="display:none;">
+      <h1>🃏 Лобби</h1>
+      <div class="lobby-code">
+        Код: <span id="lobby-code"></span>
+        <button id="copy-code" class="link-btn">📋</button>
+      </div>
+      <div id="lobby-players"></div>
+      <button id="start-mp" class="primary-btn">🎮 Начать</button>
+      <button id="leave-lobby" class="link-btn">🚪 Выйти</button>
+    </div>
+
+    <!-- Победители -->
+    <div id="result" style="display:none;"></div>
+  </div>
+
+<script src="app.js"></script>
+</body>
+</html>

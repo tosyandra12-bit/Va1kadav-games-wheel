@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎮 Va1kadav.Games</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>🎮 Va1kadav.Games</h1>
+      <div class="balance">
+        💰 <span id="bal-vrt">...</span> VRT
+        <span class="sep">·</span>
+        ⭐ <span id="bal-stars">...</span>★
+      </div>
+    </header>
+
+    <div class="games-grid">
+      <a class="game-card" href="./roulette/">
+        <div class="game-icon">🎰</div>
+        <div class="game-name">Рулетка</div>
+        <div class="game-desc">Европейская, 37 чисел</div>
+      </a>
+
+      <a class="game-card" href="./durak/">
+        <div class="game-icon">🃏</div>
+        <div class="game-name">Дурак</div>
+        <div class="game-desc">Боты и мультиплеер</div>
+      </a>
+
+      <!-- Здесь легко добавлять новые игры -->
+      <div class="game-card disabled">
+        <div class="game-icon">🎲</div>
+        <div class="game-name">Блекджек</div>
+        <div class="game-desc">Скоро...</div>
+      </div>
+
+      <div class="game-card disabled">
+        <div class="game-icon">♠️</div>
+        <div class="game-name">Покер</div>
+        <div class="game-desc">Скоро...</div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <a href="https://t.me/Va1kadavGames_bot">🤖 Открыть бота</a>
+    </div>
+  </div>
+
+<script>
+const API_URL = "https://va1kadav-roulette-backend.loca.lt";
+const REQUEST_HEADERS = {
+  'Content-Type': 'application/json',
+  'bypass-tunnel-reminder': 'true',
+  'User-Agent': 'Va1kadavBot/1.0'
+};
+const tg = window.Telegram.WebApp;
+tg.ready();
+tg.expand();
+
+async function loadBalance() {
+  try {
+    const res = await fetch(`${API_URL}/api/durak/me`, {
+      method: 'POST',
+      headers: REQUEST_HEADERS,
+      body: JSON.stringify({ init_data: tg.initData })
+    }).then(r => r.json());
+    if (res.ok) {
+      document.getElementById('bal-vrt').textContent = res.user.balance_vrt;
+      document.getElementById('bal-stars').textContent = res.user.balance_stars;
+    }
+  } catch (e) {
+    document.getElementById('bal-vrt').textContent = 'ошибка';
+  }
+}
+loadBalance();
+</script>
+</body>
+</html>

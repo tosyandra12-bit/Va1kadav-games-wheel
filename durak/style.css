@@ -1,0 +1,336 @@
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: linear-gradient(135deg, #1a3d1a, #061f06);
+  color: #fff;
+  min-height: 100vh;
+  user-select: none;
+  overflow-x: hidden;
+}
+
+#app {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 10px 10px 100px;
+  min-height: 100vh;
+}
+
+/* Шапка */
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  position: sticky;
+  top: 0;
+  background: rgba(6, 31, 6, 0.95);
+  z-index: 100;
+}
+
+.balance {
+  background: rgba(0,0,0,0.5);
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-weight: bold;
+  font-size: 14px;
+  flex: 1;
+}
+.balance .sep { opacity: 0.5; margin: 0 6px; }
+
+#close-btn {
+  background: rgba(255,255,255,0.1);
+  border: none;
+  color: #fff;
+  padding: 8px 14px;
+  border-radius: 50%;
+  font-size: 18px;
+}
+
+#loading {
+  text-align: center;
+  padding: 60px 20px;
+  color: #aaa;
+}
+
+/* Меню */
+h1 {
+  text-align: center;
+  font-size: 28px;
+  margin: 20px 0;
+}
+
+.mode-switch {
+  display: flex;
+  gap: 8px;
+  margin: 15px 0;
+}
+.mode-btn {
+  flex: 1;
+  background: rgba(255,255,255,0.08);
+  border: 2px solid transparent;
+  color: #fff;
+  padding: 12px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 14px;
+}
+.mode-btn.active {
+  border-color: #fbbf24;
+  background: rgba(251,191,36,0.15);
+}
+
+.section {
+  background: rgba(0,0,0,0.3);
+  border-radius: 14px;
+  padding: 14px;
+  margin: 12px 0;
+}
+
+.section h2 {
+  font-size: 16px;
+  margin: 0 0 10px 0;
+  color: #fbbf24;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+}
+.row label {
+  flex: 0 0 110px;
+  font-size: 14px;
+}
+.row select,
+.row input {
+  flex: 1;
+  background: #111;
+  color: #fff;
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 15px;
+}
+
+.primary-btn {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #f59e0b, #dc2626);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: bold;
+  margin-top: 8px;
+}
+
+.secondary-btn {
+  flex: 1;
+  padding: 12px;
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: #fbbf24;
+  text-decoration: underline;
+  padding: 8px;
+  font-size: 14px;
+  margin-top: 10px;
+}
+
+/* Игра */
+#trump-bar {
+  text-align: center;
+  padding: 10px;
+  background: rgba(0,0,0,0.4);
+  border-radius: 10px;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+#trump-suit {
+  font-size: 22px;
+  color: #fbbf24;
+}
+
+#opponents {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin: 12px 0;
+  min-height: 80px;
+}
+.opponent {
+  background: rgba(0,0,0,0.4);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 12px;
+  text-align: center;
+  min-width: 80px;
+}
+.opponent.turn {
+  border: 2px solid #fbbf24;
+  box-shadow: 0 0 12px #fbbf24;
+}
+.opponent .name {
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+.opponent .count {
+  opacity: 0.8;
+}
+
+#table {
+  min-height: 140px;
+  background: rgba(0,0,0,0.25);
+  border-radius: 12px;
+  padding: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  align-items: center;
+  margin: 12px 0;
+}
+
+.card-pair {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+#my-hand {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  padding: 10px 0;
+  min-height: 120px;
+}
+
+/* Карта */
+.card {
+  width: 48px;
+  height: 68px;
+  background: #fff;
+  color: #111;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px;
+  font-weight: bold;
+  font-size: 18px;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  transition: transform 0.15s;
+  border: 2px solid transparent;
+}
+.card:hover { transform: translateY(-4px); }
+.card.selected {
+  border-color: #fbbf24;
+  transform: translateY(-8px);
+}
+.card.red { color: #dc2626; }
+.card.black { color: #111; }
+
+.card .suit {
+  font-size: 22px;
+  line-height: 1;
+}
+.card .rank {
+  font-size: 16px;
+}
+
+.card.back {
+  background: linear-gradient(135deg, #1e3a8a, #0c1e4a);
+  color: #fff;
+  cursor: default;
+}
+.card.back:hover { transform: none; }
+.card.back::after {
+  content: "🂠";
+  font-size: 40px;
+}
+
+.card.small {
+  width: 36px;
+  height: 52px;
+  font-size: 14px;
+}
+.card.small .suit { font-size: 16px; }
+.card.small .rank { font-size: 12px; }
+
+#actions {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0;
+  flex-wrap: wrap;
+}
+
+#status {
+  text-align: center;
+  padding: 12px;
+  font-size: 14px;
+  color: #fbbf24;
+  min-height: 40px;
+}
+
+/* Лобби */
+.lobby-code {
+  text-align: center;
+  font-size: 24px;
+  padding: 20px;
+  background: rgba(0,0,0,0.4);
+  border-radius: 12px;
+  margin: 15px 0;
+  letter-spacing: 3px;
+}
+.lobby-code span {
+  color: #fbbf24;
+  font-weight: bold;
+}
+
+#lobby-players {
+  margin: 15px 0;
+}
+.lobby-player {
+  padding: 10px 14px;
+  background: rgba(0,0,0,0.3);
+  border-radius: 10px;
+  margin: 6px 0;
+  display: flex;
+  justify-content: space-between;
+}
+.lobby-player.ready {
+  border-left: 4px solid #4ade80;
+}
+
+/* Результат */
+#result {
+  text-align: center;
+  padding: 30px 20px;
+}
+#result h2 {
+  font-size: 32px;
+  margin: 20px 0;
+}
+#result .win { color: #4ade80; }
+#result .lose { color: #f87171; }
+#result .prize {
+  font-size: 24px;
+  margin: 20px 0;
+  color: #fbbf24;
+}
