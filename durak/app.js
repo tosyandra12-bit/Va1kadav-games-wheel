@@ -25,6 +25,7 @@ let currentMode = "vrt";
 let gameState = null;
 let selectedCard = null;
 let pollTimer = null;
+let isSending = false;  // защита от двойных кликов
 
 // ═══════════════════════════════════════════════════════════
 //  УТИЛИТЫ
@@ -163,7 +164,7 @@ async function loadUser() {
     }
     userData = res.user;
     renderBalance();
-    console.log('[LOAD] User загружен');
+    console.log('[LOAD] User загружен:', userData);
   } catch (err) {
     console.warn('[LOAD] Network error:', err);
     $('bal-vrt').textContent = "?";
@@ -191,7 +192,6 @@ function setMode(mode) {
 // ═══════════════════════════════════════════════════════════
 async function startBotGame() {
   console.log('[GAME] startBotGame');
-
   if (!userData) return showStatus("⏳ Загрузка данных...");
 
   const players = parseInt($('bot-players').value);
@@ -199,10 +199,7 @@ async function startBotGame() {
 
   if (bet < 10) return showStatus("❌ Минимальная ставка 10");
 
-  const bal = currentMode === 'vrt'
-    ? userData.balance_vrt
-    : userData.balance_stars;
-
+  const bal = currentMode === 'vrt' ? userData.balance_vrt : userData.balance_stars;
   if (bal < bet) {
     return showStatus(`❌ Недостаточно ${currentMode === 'vrt' ? 'VRT' : '★'}`);
   }
@@ -223,6 +220,7 @@ async function startBotGame() {
 
     if (!res.ok) return showStatus("❌ " + (res.error || "Ошибка"));
     gameState = res.game;
+    selectedCard = null;
     showScreen('game');
     renderGame();
     showStatus("");
@@ -240,7 +238,6 @@ async function createRoomHandler() {
 
   const maxPlayers = parseInt($('mp-players').value);
   const bet = parseInt($('mp-bet').value);
-
   if (bet < 10) return showStatus("❌ Минимальная ставка 10");
 
   try {
@@ -333,6 +330,7 @@ async function startMultiplayerGame(code) {
 
     if (!res.ok) return showStatus("❌ " + (res.error || "Ошибка"));
     gameState = res.game;
+    selectedCard = null;
     stopPolling();
     showScreen('game');
     renderGame();
@@ -371,7 +369,7 @@ function renderGame() {
     });
   }
 
-  // Стол (пары атака/защита)
+  // Стол
   const tableEl = $('table');
   if (tableEl) {
     tableEl.innerHTML = '';
@@ -402,9 +400,11 @@ function renderGame() {
   const isMyTurn = g.current_turn === g.my_id;
   if (isMyTurn) {
     if (g.phase === 'attack') {
-      statusText = "👉 Ваш ход: клик на карту = атака";
+      statusText = g.table?.length > 0
+        ? "👉 Подкиньте ещё или «Пас»"
+        : "👉 Ваш ход: клик на карту = атака";
     } else {
-      statusText = "🛡 Отбивайтесь: клик на карту, или «Взять»";
+      statusText = "🛡 Отбивайтесь: клик на карту или «Взять»";
     }
   } else {
     const oppName = g.players?.[g.current_turn]?.name || 'игрок';
@@ -442,12 +442,16 @@ function createCardEl(card, clickable, small) {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  🔥 ФИКС: клик на карту = сразу ход
+//  🔥 КЛИК НА КАРТУ — С ЗАЩИТОЙ ОТ ДВОЙНОГО КЛИКА
 // ═══════════════════════════════════════════════════════════
-function onCardClick(idx, el) {
+async function onCardClick(idx, el) {
   console.log('[CLICK] Карта', idx);
 
   if (!gameState) return;
+  if (isSending) {
+    console.log('[CLICK] Игнор — уже отправляем');
+    return;
+  }
   if (gameState.current_turn !== gameState.my_id) {
     return showStatus("⏳ Не ваш ход");
   }
@@ -457,8 +461,10 @@ function onCardClick(idx, el) {
   document.querySelectorAll('#my-hand .card').forEach(c => c.classList.remove('selected'));
   el.classList.add('selected');
 
-  // ⚡ сразу отправляем ход
-  action('play');
+  // ⚡ отправляем
+  isSending = true;
+  await action('play');
+  isSending = false;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -466,32 +472,41 @@ function onCardClick(idx, el) {
 // ═══════════════════════════════════════════════════════════
 async function action(type) {
   if (!gameState || !gameState.id) return;
+
   if (gameState.current_turn !== gameState.my_id) {
     return showStatus("⏳ Не ваш ход");
   }
 
-  if (type === 'play' && selectedCard === null) {
-    return showStatus("❌ Выберите карту");
+  // ─── ПРОВЕРКА ДЛЯ PLAY ─────────────────────────
+  if (type === 'play') {
+    if (selectedCard === null || selectedCard === undefined) {
+      return showStatus("❌ Выберите карту");
+    }
+    if (!gameState.my_hand || selectedCard < 0 || selectedCard >= gameState.my_hand.length) {
+      selectedCard = null;
+      return showStatus("❌ Карта не найдена");
+    }
   }
 
-  console.log('[ACTION]', type, 'card_index=', selectedCard);
+  // ─── PAYLOAD ───────────────────────────────────
+  const payload = {
+    init_data: tg ? tg.initData : "",
+    game_id: gameState.id,
+    action: type,
+    card_index: (type === 'play') ? Number(selectedCard) : null,
+  };
+
+  console.log('[ACTION] Отправляем:', payload);
 
   try {
     const res = await fetch(`${API_URL}/api/durak/action`, {
       method: 'POST',
       headers: REQUEST_HEADERS,
-      body: JSON.stringify({
-        init_data: tg ? tg.initData : "",
-        game_id: gameState.id,
-        action: type,
-        card_index: selectedCard
-      })
+      body: JSON.stringify(payload)
     }).then(r => r.json());
 
     if (!res.ok) {
-      // ошибка — показываем и НЕ сбрасываем selectedCard
       showStatus("❌ " + (res.error || "Ошибка"));
-      // снимаем выделение с карты
       document.querySelectorAll('#my-hand .card').forEach(c => c.classList.remove('selected'));
       selectedCard = null;
       return;
@@ -597,6 +612,7 @@ function exitGame() {
   stopPolling();
   gameState = null;
   selectedCard = null;
+  isSending = false;
   showScreen('menu');
   loadUser();
 }
