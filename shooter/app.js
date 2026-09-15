@@ -1,17 +1,14 @@
 // ═══════════════════════════════════════════════════════════
 //  НАСТРОЙКИ
 // ═══════════════════════════════════════════════════════════
-const SERVER_WS = "wss://va1kadav-shooter.loca.lt";  // ← поменяй на свой адрес
+// ⚡ Адрес туннеля (wss для HTTPS!)
+const SERVER_WS = "wss://va1kadav-roulette-backend.loca.lt";
 
 const tg = window.Telegram?.WebApp;
 if (tg) { tg.ready(); tg.expand(); }
 
-// ═══════════════════════════════════════════════════════════
-//  СОСТОЯНИЕ
-// ═══════════════════════════════════════════════════════════
 let ws = null;
 let myId = null;
-let roomId = null;
 let gameState = null;
 let myPlayer = null;
 let isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
@@ -21,7 +18,6 @@ let camera = { x: 0, y: 0 };
 let lastMoveSend = 0;
 let lastAimSend = 0;
 let lastShootSend = 0;
-let pendingShoot = false;
 
 let joyMove = { active: false, dx: 0, dy: 0, touchId: null };
 let joyAim = { active: false, dx: 0, dy: 0, touchId: null };
@@ -30,7 +26,6 @@ const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 const $ = id => document.getElementById(id);
 
-// WEAPONS (синхронизировано с сервером)
 const WEAPONS = {
   deagle: { name: 'DEAGLE', mag_size: 7 },
   ak: { name: 'AK-47', mag_size: 30 },
@@ -40,9 +35,6 @@ const WEAPONS = {
   knife: { name: 'KNIFE', mag_size: 999 },
 };
 
-// ═══════════════════════════════════════════════════════════
-//  UI
-// ═══════════════════════════════════════════════════════════
 function setStatus(text, color = '#888') {
   const el = $('status');
   if (el) { el.textContent = text; el.style.color = color; }
@@ -58,16 +50,16 @@ function connect() {
 
   const uid = Math.random().toString(36).substr(2, 9);
   myId = uid;
-  roomId = code;
 
   setStatus('Подключаюсь...', '#ffaa00');
 
-  const url = `${SERVER_WS}/ws/${code}/${uid}?name=${encodeURIComponent(name)}&mode=${mode}`;
+  const url = `${SERVER_WS}/ws/shooter/${code}/${uid}?name=${encodeURIComponent(name)}&mode=${mode}`;
+  console.log('[WS] connecting to', url);
 
   try {
     ws = new WebSocket(url);
   } catch (e) {
-    setStatus('❌ Ошибка подключения', '#ff3333');
+    setStatus('❌ Ошибка: ' + e.message, '#ff3333');
     return;
   }
 
@@ -84,7 +76,7 @@ function connect() {
     try {
       const msg = JSON.parse(ev.data);
       if (msg.type === 'welcome') {
-        console.log('Welcome:', msg);
+        console.log('[WS] welcome:', msg);
       } else if (msg.type === 'state') {
         gameState = msg.data;
         myPlayer = gameState.players.find(p => p.id === myId);
@@ -97,19 +89,16 @@ function connect() {
 
   ws.onerror = (e) => {
     setStatus('❌ Ошибка WebSocket', '#ff3333');
-    console.error(e);
+    console.error('[WS] error', e);
   };
 
-  ws.onclose = () => {
-    setStatus('❌ Соединение закрыто', '#ff3333');
+  ws.onclose = (e) => {
+    setStatus('❌ Соединение закрыто (' + e.code + ')', '#ff3333');
     $('menu').style.display = 'flex';
     $('game').style.display = 'none';
   };
 }
 
-// ═══════════════════════════════════════════════════════════
-//  ОТПРАВКА
-// ═══════════════════════════════════════════════════════════
 function send(data) {
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify(data));
@@ -164,10 +153,7 @@ canvas.addEventListener('mousemove', (e) => {
 });
 
 canvas.addEventListener('mousedown', (e) => {
-  if (e.button === 0) {
-    mouse.down = true;
-    sendShoot();
-  }
+  if (e.button === 0) { mouse.down = true; sendShoot(); }
   if (e.button === 2) sendScope(true);
 });
 
@@ -305,13 +291,11 @@ function renderLoop(ts) {
       lastAimSend = ts;
     }
 
-    // авто-стрельба
     if (mouse.down && !isMobile && ts - lastShootSend > 100) {
       sendShoot();
       lastShootSend = ts;
     }
 
-    // авто-стрельба на мобилке (если правый джойстик отклонён сильно)
     if (isMobile && Math.hypot(aimX, aimY) > 0.7 && ts - lastShootSend > 100) {
       sendShoot();
       lastShootSend = ts;
@@ -343,11 +327,9 @@ function render() {
   const arena = gameState.arena || [1200, 800];
   const walls = gameState.walls || [];
 
-  // пол
   ctx.fillStyle = '#2a2a2a';
   ctx.fillRect(0, 0, arena[0], arena[1]);
 
-  // сетка
   ctx.strokeStyle = 'rgba(255,255,255,0.05)';
   ctx.lineWidth = 1;
   for (let x = 0; x < arena[0]; x += 50) {
@@ -357,13 +339,12 @@ function render() {
     ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(arena[0], y); ctx.stroke();
   }
 
-  // стены
   ctx.fillStyle = '#4a4a4a';
   for (const [x, y, w, h] of walls) {
     ctx.fillRect(x, y, w, h);
   }
 
-  // пули (трассеры)
+  // пули
   for (const b of (gameState.bullets || [])) {
     ctx.beginPath();
     ctx.arc(b.x, b.y, 4, 0, Math.PI * 2);
@@ -372,14 +353,6 @@ function render() {
     ctx.shadowBlur = 12;
     ctx.fill();
     ctx.shadowBlur = 0;
-
-    // трассер (линия позади пули)
-    ctx.beginPath();
-    ctx.moveTo(b.x, b.y);
-    ctx.lineTo(b.x - Math.cos(0) * 20, b.y - Math.sin(0) * 20);
-    ctx.strokeStyle = 'rgba(255,221,51,0.4)';
-    ctx.lineWidth = 2;
-    ctx.stroke();
   }
 
   // игроки
@@ -389,28 +362,19 @@ function render() {
     let color = p.color;
     if (p.id === myId) color = '#ffaa33';
 
-    // тень
     ctx.beginPath();
     ctx.arc(p.x, p.y + 2, 16, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
     ctx.fill();
 
-    // тело
+    const r = p.crouching ? 11 : 15;
     ctx.beginPath();
-    ctx.arc(p.x, p.y, 15, 0, Math.PI * 2);
+    ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
     ctx.fillStyle = color;
     ctx.shadowColor = color;
     ctx.shadowBlur = 12;
     ctx.fill();
     ctx.shadowBlur = 0;
-
-    // приседание — уменьшаем
-    if (p.crouching) {
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 11, 0, Math.PI * 2);
-      ctx.fillStyle = color;
-      ctx.fill();
-    }
 
     // ствол
     ctx.beginPath();
@@ -441,7 +405,6 @@ function render() {
 
   ctx.restore();
 
-  // респавн
   if (myPlayer && !myPlayer.alive) {
     $('respawn').style.display = 'block';
     const left = Math.max(0, Math.ceil((myPlayer.respawn_at || 0)));
@@ -451,9 +414,6 @@ function render() {
   }
 }
 
-// ═══════════════════════════════════════════════════════════
-//  HUD
-// ═══════════════════════════════════════════════════════════
 function updateHUD() {
   if (!myPlayer) return;
   $('hp-fill').style.width = myPlayer.hp + '%';
@@ -463,7 +423,7 @@ function updateHUD() {
   $('ammo').textContent = myPlayer.reloading
     ? 'ПЕРЕЗАРЯДКА'
     : `${myPlayer.ammo} / ${w.mag_size}`;
-  $('kills-text').textContent = `${myPlayer.kills} kills / ${myPlayer.deaths} deaths`;
+  $('kills-text').textContent = `${myPlayer.kills} / ${myPlayer.deaths}`;
   updateWeaponsBar(myPlayer.weapon);
 }
 
