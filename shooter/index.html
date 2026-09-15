@@ -9,7 +9,6 @@
 </head>
 <body>
   <div id="app">
-    <!-- Меню -->
     <div id="menu">
       <h1>🎯 SHOOTER</h1>
       <div class="input-row">
@@ -33,11 +32,9 @@
       <div id="status">Не подключен</div>
     </div>
 
-    <!-- Игра -->
     <div id="game" style="display:none;">
       <canvas id="canvas"></canvas>
 
-      <!-- HUD -->
       <div id="hud-top">
         <div id="hp-bar">
           <div id="hp-fill"></div>
@@ -48,11 +45,10 @@
           <span id="ammo">7 / 7</span>
         </div>
         <div id="kills">
-          <span id="kills-text">0 kills</span>
+          <span id="kills-text">0 / 0</span>
         </div>
       </div>
 
-      <!-- оружие -->
       <div id="weapons-bar">
         <button data-weapon="deagle" class="weapon-btn active">1️⃣ Дигл</button>
         <button data-weapon="ak" class="weapon-btn">2️⃣ AK</button>
@@ -62,13 +58,11 @@
         <button data-weapon="knife" class="weapon-btn">6️⃣ Нож</button>
       </div>
 
-      <!-- смерть -->
       <div id="respawn" style="display:none;">
         <div>💀 ТЫ УМЕР</div>
         <div id="respawn-timer">3</div>
       </div>
 
-      <!-- мобильные джойстики -->
       <div id="mobile-controls" style="display:none;">
         <div class="joystick" id="joy-move">
           <div class="stick"></div>
