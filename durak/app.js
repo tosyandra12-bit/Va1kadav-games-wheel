@@ -27,6 +27,7 @@ let selectedCard = null;
 let pollTimer = null;
 let isSending = false;
 let lastTrump = null;
+let freeMode = false;
 
 // ═══════════════════════════════════════════════════════════
 //  УТИЛИТЫ
@@ -96,7 +97,42 @@ function highlightOpponent(oppId, on) {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  СРАВНЕНИЕ СОСТОЯНИЙ — против мерцания
+//  🎖️ АНИМАЦИЯ «ПОГОНЫ»
+// ═══════════════════════════════════════════════════════════
+function showPogony(whoGotPogony) {
+  const overlay = document.createElement('div');
+  overlay.className = 'pogony-overlay';
+
+  const isMe = whoGotPogony === 'me';
+
+  overlay.innerHTML = `
+    <div class="pogony-emoji">🎖️</div>
+    <div class="pogony-title">ПОГОНЫ!</div>
+    <div class="pogony-subtitle">
+      ${isMe ? '😱 Ты повесил 4 шестёрки!' : '🎉 Соперник повесил 4 шестёрки!'}<br>
+      ${isMe ? 'Ты получил погоны!' : 'Ты выиграл ×5!'}
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+  vibrate(isMe ? 'error' : 'success');
+
+  // искры
+  for (let i = 0; i < 12; i++) {
+    const spark = document.createElement('div');
+    spark.className = 'sparkle';
+    spark.textContent = '✨';
+    spark.style.left = Math.random() * 100 + '%';
+    spark.style.top = Math.random() * 100 + '%';
+    spark.style.animationDelay = (Math.random() * 1.5) + 's';
+    overlay.appendChild(spark);
+  }
+
+  setTimeout(() => overlay.remove(), 4000);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  СРАВНЕНИЕ СОСТОЯНИЙ
 // ═══════════════════════════════════════════════════════════
 function stateChanged(oldState, newState) {
   if (!oldState || !newState) return true;
@@ -108,7 +144,6 @@ function stateChanged(oldState, newState) {
   if (oldState.deck_count !== newState.deck_count) return true;
   if (oldState.finished !== newState.finished) return true;
 
-  // Стол
   const oldTable = oldState.table || [];
   const newTable = newState.table || [];
   if (oldTable.length !== newTable.length) return true;
@@ -124,12 +159,10 @@ function stateChanged(oldState, newState) {
     if (od && nd && (od.rank !== nd.rank || od.suit !== nd.suit)) return true;
   }
 
-  // Моя рука
   const oldHand = oldState.my_hand || [];
   const newHand = newState.my_hand || [];
   if (oldHand.length !== newHand.length) return true;
 
-  // Противники
   const oldOpp = oldState.opponents || [];
   const newOpp = newState.opponents || [];
   if (oldOpp.length !== newOpp.length) return true;
@@ -137,7 +170,6 @@ function stateChanged(oldState, newState) {
     if (oldOpp[i].card_count !== newOpp[i].card_count) return true;
   }
 
-  // last_action
   const ol = oldState.last_action;
   const nl = newState.last_action;
   if (!ol && nl) return true;
@@ -152,7 +184,16 @@ function stateChanged(oldState, newState) {
 // ═══════════════════════════════════════════════════════════
 function bindEvents() {
   const startBot = $('start-bot');
-  if (startBot) startBot.onclick = startBotGame;
+  if (startBot) startBot.onclick = () => {
+    freeMode = false;
+    startBotGame();
+  };
+
+  const startFree = $('start-free');
+  if (startFree) startFree.onclick = () => {
+    freeMode = true;
+    startBotGame();
+  };
 
   const createRoom = $('create-room');
   if (createRoom) createRoom.onclick = createRoomHandler;
@@ -272,19 +313,26 @@ function setMode(mode) {
 //  ИГРА С БОТАМИ
 // ═══════════════════════════════════════════════════════════
 async function startBotGame() {
-  if (!userData) return showStatus("⏳ Загрузка...");
-
-  const players = parseInt($('bot-players').value);
-  const bet = parseInt($('bot-bet').value);
-
-  if (bet < 10) return showToast("❌ Минимум 10", 'error');
-
-  const bal = currentMode === 'vrt' ? userData.balance_vrt : userData.balance_stars;
-  if (bal < bet) {
-    return showToast(`❌ Недостаточно ${currentMode === 'vrt' ? 'VRT' : '★'}`, 'error');
+  if (!userData && !freeMode) {
+    return showStatus("⏳ Загрузка данных...");
   }
 
-  showStatus("⏳ Создаём игру...");
+  const players = parseInt($('bot-players').value);
+  const bet = freeMode ? 0 : parseInt($('bot-bet').value);
+
+  if (!freeMode && bet < 10) {
+    return showToast("❌ Минимум 10", 'error');
+  }
+
+  if (!freeMode && userData) {
+    const bal = currentMode === 'vrt' ? userData.balance_vrt : userData.balance_stars;
+    if (bal < bet) {
+      return showToast(`❌ Недостаточно ${currentMode === 'vrt' ? 'VRT' : '★'}`, 'error');
+    }
+  }
+
+  showStatus(freeMode ? "🆓 Создаём бесплатную игру..." : "⏳ Создаём игру...");
+
   try {
     const res = await fetch(`${API_URL}/api/durak/new`, {
       method: 'POST',
@@ -294,11 +342,15 @@ async function startBotGame() {
         players: players,
         bet: bet,
         currency: currentMode,
-        mode: 'bot'
+        mode: freeMode ? 'free' : 'bot',
+        free: freeMode
       })
     }).then(r => r.json());
 
-    if (!res.ok) return showToast("❌ " + (res.error || "Ошибка"), 'error');
+    if (!res.ok) {
+      return showToast("❌ " + (res.error || "Ошибка"), 'error');
+    }
+
     gameState = res.game;
     selectedCard = null;
     lastTrump = null;
@@ -306,13 +358,20 @@ async function startBotGame() {
     renderGame();
     showStatus("");
 
+    // проверяем погоны сразу
+    if (gameState.pogony) {
+      showPogony(gameState.pogony === gameState.my_id ? 'me' : 'enemy');
+    }
+
     if (res.next_is_bot) {
       setTimeout(() => runBotTurns(), 900);
     } else {
       startPolling();
     }
   } catch (err) {
-    showToast("❌ Сеть недоступна", 'error');
+    console.error('[START]', err);
+    showToast("❌ Не могу связаться с сервером", 'error');
+    showStatus("❌ Backend недоступен. Попробуй позже.");
   }
 }
 
@@ -321,8 +380,10 @@ async function startBotGame() {
 // ═══════════════════════════════════════════════════════════
 async function createRoomHandler() {
   if (!userData) return showStatus("⏳ Загрузка...");
+
   const maxPlayers = parseInt($('mp-players').value);
   const bet = parseInt($('mp-bet').value);
+
   if (bet < 10) return showToast("❌ Минимум 10", 'error');
 
   try {
@@ -368,6 +429,11 @@ async function joinRoomHandler() {
       stopPolling();
       showScreen('game');
       renderGame();
+
+      if (gameState.pogony) {
+        showPogony(gameState.pogony === gameState.my_id ? 'me' : 'enemy');
+      }
+
       if (res.next_is_bot) {
         setTimeout(() => runBotTurns(), 900);
       } else {
@@ -432,6 +498,11 @@ async function startMultiplayerGame(code) {
     stopPolling();
     showScreen('game');
     renderGame();
+
+    if (gameState.pogony) {
+      showPogony(gameState.pogony === gameState.my_id ? 'me' : 'enemy');
+    }
+
     startPolling();
   } catch (err) {
     showToast("❌ Сеть недоступна", 'error');
@@ -459,74 +530,97 @@ function renderGame() {
   const deckCount = $('deck-count');
   if (deckCount) deckCount.textContent = g.deck_count || 0;
 
-  // Противники
+  // Противники — перерисовываем только если изменилось
   const oppContainer = $('opponents');
   if (oppContainer) {
-    oppContainer.innerHTML = '';
-    (g.opponents || []).forEach(opp => {
-      const div = document.createElement('div');
-      div.className = 'opponent';
-      div.dataset.id = opp.id;
-      if (g.current_turn === opp.id) div.classList.add('turn');
-      div.innerHTML = `
-        <div class="name">${opp.name}</div>
-        <div class="count">🂠 ${opp.card_count}</div>
-      `;
-      oppContainer.appendChild(div);
+    const oppKey = JSON.stringify({
+      opp: g.opponents,
+      turn: g.current_turn,
     });
+    if (oppContainer.dataset.key !== oppKey) {
+      oppContainer.innerHTML = '';
+      (g.opponents || []).forEach(opp => {
+        const div = document.createElement('div');
+        div.className = 'opponent';
+        div.dataset.id = opp.id;
+        if (g.current_turn === opp.id) div.classList.add('turn');
+        div.innerHTML = `
+          <div class="name">${opp.name}</div>
+          <div class="count">🂠 ${opp.card_count}</div>
+        `;
+        oppContainer.appendChild(div);
+      });
+      oppContainer.dataset.key = oppKey;
+    }
   }
 
   // Стол
   const tableEl = $('table');
   if (tableEl) {
-    tableEl.innerHTML = '';
-    (g.table || []).forEach(pair => {
-      const pairDiv = document.createElement('div');
-      pairDiv.className = 'card-pair';
+    const tableKey = JSON.stringify(g.table || []);
+    if (tableEl.dataset.key !== tableKey) {
+      const oldCount = tableEl.querySelectorAll('.card-pair').length;
+      tableEl.innerHTML = '';
+      (g.table || []).forEach((pair, idx) => {
+        const pairDiv = document.createElement('div');
+        pairDiv.className = 'card-pair';
 
-      if (pair.attack) {
-        const attackEl = createCardEl(pair.attack, false, true);
-        attackEl.classList.add('fly-in');
-        pairDiv.appendChild(attackEl);
-      }
+        if (pair.attack) {
+          const attackEl = createCardEl(pair.attack, false, true);
+          if (idx >= oldCount) attackEl.classList.add('fly-in');
+          pairDiv.appendChild(attackEl);
+        }
 
-      if (pair.defend) {
-        const defendEl = createCardEl(pair.defend, false, true);
-        defendEl.classList.add('slam');
-        pairDiv.appendChild(defendEl);
-      }
+        if (pair.defend) {
+          const defendEl = createCardEl(pair.defend, false, true);
+          defendEl.classList.add('slam');
+          pairDiv.appendChild(defendEl);
+        }
 
-      tableEl.appendChild(pairDiv);
-    });
+        tableEl.appendChild(pairDiv);
+      });
+      tableEl.dataset.key = tableKey;
+    }
   }
 
   // Мои карты
   const myHand = $('my-hand');
   if (myHand) {
-    myHand.innerHTML = '';
-    (g.my_hand || []).forEach((card, idx) => {
-      const el = createCardEl(card, true, false);
-      el.dataset.index = idx;
-      el.onclick = () => onCardClick(idx, el);
-      if (selectedCard === idx) el.classList.add('selected');
-      myHand.appendChild(el);
-    });
+    const handKey = JSON.stringify(g.my_hand || []);
+    if (myHand.dataset.key !== handKey || myHand.dataset.selected !== String(selectedCard)) {
+      myHand.innerHTML = '';
+      (g.my_hand || []).forEach((card, idx) => {
+        const el = createCardEl(card, true, false);
+        el.dataset.index = idx;
+        el.onclick = () => onCardClick(idx, el);
+        if (selectedCard === idx) el.classList.add('selected');
+        myHand.appendChild(el);
+      });
+      myHand.dataset.key = handKey;
+      myHand.dataset.selected = String(selectedCard);
+    }
   }
 
   // Статус
   let statusText = '';
   const isMyTurn = g.current_turn === g.my_id;
+  if (g.free) {
+    statusText = "🆓 Бесплатная игра · ";
+  } else {
+    statusText = "";
+  }
+
   if (isMyTurn) {
     if (g.phase === 'attack') {
-      statusText = g.table?.length > 0
+      statusText += g.table?.length > 0
         ? "👉 Подкиньте ещё или «Пас»"
         : "👉 Ваш ход: клик на карту";
     } else {
-      statusText = "🛡 Отбивайтесь или «Взять»";
+      statusText += "🛡 Отбивайтесь или «Взять»";
     }
   } else {
     const oppName = g.players?.[g.current_turn]?.name || 'игрок';
-    statusText = `⏳ Ходит ${oppName}...`;
+    statusText += `⏳ Ходит ${oppName}...`;
   }
   if (g.message) statusText = g.message;
 
@@ -543,6 +637,13 @@ function renderGame() {
   if (btnTake) {
     btnTake.style.display = (isMyTurn && g.phase === 'defend')
       ? 'block' : 'none';
+  }
+
+  // Погоны
+  if (g.pogony && !g._pogonyShown) {
+    g._pogonyShown = true;
+    const who = g.pogony === g.my_id ? 'me' : 'enemy';
+    setTimeout(() => showPogony(who), 500);
   }
 
   if (g.finished) showResult(g);
@@ -646,6 +747,9 @@ async function action(type) {
     } else if (la.type === 'end_round') {
       showToast(`🎯 Раунд окончен`, 'success');
       vibrate('success');
+    } else if (la.type === 'pogony') {
+      // показываем погоны
+      showPogony('me');
     }
 
     selectedCard = null;
@@ -666,7 +770,7 @@ async function action(type) {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  ХОДЫ БОТОВ — ПОШАГОВО С ВИЗУАЛОМ
+//  ХОДЫ БОТОВ
 // ═══════════════════════════════════════════════════════════
 async function runBotTurns() {
   if (!gameState || !gameState.id) return;
@@ -720,6 +824,9 @@ async function runBotTurns() {
           showToast(`✅ Отбито`, 'info');
         } else if (la.type === 'end_round') {
           showToast(`🎯 Раунд окончен`, 'success');
+        } else if (la.type === 'pogony') {
+          // соперник повесил погоны → мы выиграли x5
+          showPogony('enemy');
         }
       }
 
@@ -801,7 +908,6 @@ async function pollUpdate() {
 
     if (!gameState.id) return;
 
-    // ⚡ если ход бота — запускаем ходы
     const cur = gameState.current_turn;
     const isBotTurn = gameState.opponents?.some(o => o.id === cur);
     if (isBotTurn) {
@@ -809,7 +915,6 @@ async function pollUpdate() {
       return;
     }
 
-    // ⚡ получаем новое состояние
     const res = await fetch(`${API_URL}/api/durak/state`, {
       method: 'POST',
       headers: REQUEST_HEADERS,
@@ -821,7 +926,6 @@ async function pollUpdate() {
 
     if (!res.ok || !res.game) return;
 
-    // ⚡ СРАВНИВАЕМ: изменилось ли что-то?
     if (stateChanged(gameState, res.game)) {
       gameState = res.game;
       renderGame();
@@ -830,7 +934,6 @@ async function pollUpdate() {
         setTimeout(() => runBotTurns(), 900);
       }
     } else {
-      // ничего не изменилось — НЕ перерисовываем
       gameState.last_action = res.game.last_action;
     }
   } catch (err) {}
@@ -848,20 +951,31 @@ function showResult(g) {
 
   const won = g.winner === g.my_id;
   const isDurak = g.durak === g.my_id;
+  const pogony = g.pogony === g.my_id;
 
   let html = '';
   if (won) {
     html += `<h2 class="win">🎉 ПОБЕДА!</h2>`;
-    html += `<div class="prize">Выигрыш: +${g.prize || 0}</div>`;
+    if (g.prize) {
+      html += `<div class="prize">Выигрыш: +${g.prize}</div>`;
+    }
+    if (g.pogony) {
+      html += `<div class="prize">🎖️ ×5 за погоны!</div>`;
+    }
     vibrate('success');
+  } else if (isDurak && pogony) {
+    html += `<h2 class="lose">🎖️ ПОГОНЫ!</h2>`;
+    html += `<div class="prize">Ты повесил 4 шестёрки!</div>`;
+    vibrate('error');
   } else if (isDurak) {
     html += `<h2 class="lose">🃏 ВЫ ДУРАК!</h2>`;
-    html += `<div class="prize">Потеряно: -${g.bet || 0}</div>`;
+    if (g.bet) html += `<div class="prize">Потеряно: -${g.bet}</div>`;
     vibrate('error');
   } else {
     html += `<h2 class="lose">😞 Проигрыш</h2>`;
-    html += `<div class="prize">Потеряно: -${g.bet || 0}</div>`;
+    if (g.bet) html += `<div class="prize">Потеряно: -${g.bet}</div>`;
   }
+
   html += `<button class="primary-btn" onclick="exitGame()">🏠 В меню</button>`;
   result.innerHTML = html;
 }
@@ -883,10 +997,11 @@ function showRules() {
     "• Козырь бьёт любую карту другой масти\n" +
     "• Старшая бьёт младшую (Т>К>Д>В>10>9>8>7>6)\n" +
     "• Атакующий кладёт карту, защитник отбивает\n" +
-    "• После отбоя атакующий может подкинуть карту того же ранга\n" +
-    "• Не отбился — забирает все карты со стола\n" +
-    "• Первый без карт — победитель\n" +
-    "• Последний — ДУРАК"
+    "• После отбоя можно подкинуть карту того же ранга\n" +
+    "• Не отбился — забирает все карты со стола\n\n" +
+    "🎖️ ПОГОНЫ:\n" +
+    "Если у тебя остались 4 шестёрки — это погоны!\n" +
+    "Ты проигрываешь, а победитель получает ×5!"
   );
   if (tg && tg.showAlert) tg.showAlert(rules);
   else alert(rules);
