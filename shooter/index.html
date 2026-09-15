@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>🎯 Shooter</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+  <div id="app">
+    <!-- Меню -->
+    <div id="menu">
+      <h1>🎯 SHOOTER</h1>
+      <div class="input-row">
+        <label>Комната:</label>
+        <input id="room-code" type="text" value="room1" maxlength="20">
+      </div>
+      <div class="input-row">
+        <label>Твоё имя:</label>
+        <input id="player-name" type="text" placeholder="Игрок">
+      </div>
+      <div class="input-row">
+        <label>Режим:</label>
+        <select id="game-mode">
+          <option value="1v1">1 на 1</option>
+          <option value="2v2">2 на 2</option>
+          <option value="dm">Deathmatch</option>
+        </select>
+      </div>
+      <button id="btn-connect" class="primary">🎮 Подключиться</button>
+      <button id="btn-share" class="secondary">📤 Скопировать ссылку</button>
+      <div id="status">Не подключен</div>
+    </div>
+
+    <!-- Игра -->
+    <div id="game" style="display:none;">
+      <canvas id="canvas"></canvas>
+
+      <!-- HUD -->
+      <div id="hud-top">
+        <div id="hp-bar">
+          <div id="hp-fill"></div>
+          <span id="hp-text">100</span>
+        </div>
+        <div id="weapon-info">
+          <span id="weapon-name">DEAGLE</span>
+          <span id="ammo">7 / 7</span>
+        </div>
+        <div id="kills">
+          <span id="kills-text">0 kills</span>
+        </div>
+      </div>
+
+      <!-- оружие -->
+      <div id="weapons-bar">
+        <button data-weapon="deagle" class="weapon-btn active">1️⃣ Дигл</button>
+        <button data-weapon="ak" class="weapon-btn">2️⃣ AK</button>
+        <button data-weapon="lmg" class="weapon-btn">3️⃣ Пулемёт</button>
+        <button data-weapon="awp" class="weapon-btn">4️⃣ AWP</button>
+        <button data-weapon="shotgun" class="weapon-btn">5️⃣ Дробовик</button>
+        <button data-weapon="knife" class="weapon-btn">6️⃣ Нож</button>
+      </div>
+
+      <!-- смерть -->
+      <div id="respawn" style="display:none;">
+        <div>💀 ТЫ УМЕР</div>
+        <div id="respawn-timer">3</div>
+      </div>
+
+      <!-- мобильные джойстики -->
+      <div id="mobile-controls" style="display:none;">
+        <div class="joystick" id="joy-move">
+          <div class="stick"></div>
+        </div>
+        <div class="joystick" id="joy-aim">
+          <div class="stick"></div>
+        </div>
+        <button id="btn-reload-mobile">🔄</button>
+        <button id="btn-crouch-mobile">⬇️</button>
+      </div>
+    </div>
+  </div>
+
+<script src="app.js"></script>
+</body>
+</html>
